@@ -1,26 +1,51 @@
-import axios from 'axios';
+import querystring from 'querystring';
 
 export function obtainSquareOAuthUrl() {
-    const SQUARE_APP_ID = process.env.SQUARE_APP_ID;
-  
-    console.log(SQUARE_APP_ID);
+  const SQUARE_APP_ID = process.env.SQUARE_APP_ID;
+  const SQUARE_CALLBACK_URL = process.env.SQUARE_CALLBACK_URL;
+  const scopes = ['MERCHANT_PROFILE_READ', 'PAYMENTS_READ'];
+  const state = SQUARE_CALLBACK_URL;
 
-    return `https://connect.squareupsandbox.com/oauth2/authorize?client_id=${SQUARE_APP_ID}`;
-  }
-  
+  const authorizationUrl =
+    `https://connect.squareupsandbox.com/oauth2/authorize` +
+    `?client_id=${SQUARE_APP_ID}` +
+    `&response_type=code` +
+    `&scope=${scopes.join('+')}` +
+    `&state=${state}`;
 
-export async function obtainSquareOAuthToken(code) {
-  const { SQUARE_APP_ID, SQUARE_APP_SECRET, SQUARE_CALLBACK_URL } = process.env;
+  return authorizationUrl;
+}
 
-  const requestBody = {
-    grant_type: 'authorization_code',
-    client_id: SQUARE_APP_ID,
-    client_secret: SQUARE_APP_SECRET,
-    code,
-    redirect_uri: SQUARE_CALLBACK_URL,
-  };
+export async function exchangeCodeForAccessToken(code) {
+  const SQUARE_APP_ID = process.env.SQUARE_APP_ID;
+  const SQUARE_APP_SECRET = process.env.SQUARE_APP_SECRET;
+  const SQUARE_CALLBACK_URL = process.env.SQUARE_CALLBACK_URL;
 
-  const response = await axios.post('https://connect.squareupsandbox.com/oauth2/token', requestBody);
+  const response = await fetch('https://connect.squareupsandbox.com/oauth2/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      client_id: SQUARE_APP_ID,
+      client_secret: SQUARE_APP_SECRET,
+      code,
+      grant_type: 'authorization_code',
+      redirect_uri: SQUARE_CALLBACK_URL,
+    }),
+  });
 
-  return response;
+  const data = await response.json();
+
+  // Pull merchant details
+  const merchantResponse = await fetch(`https://connect.squareupsandbox.com/v2/merchants/${data.merchant_id}`, {
+    headers: {
+      Authorization: `Bearer ${data.access_token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  const merchantData = await merchantResponse.json();
+  data.merchant_name = merchantData.name;
+
+  return data;
 }
