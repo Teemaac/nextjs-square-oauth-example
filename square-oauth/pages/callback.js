@@ -1,13 +1,39 @@
+import { useRouter } from 'next/router';
+import Head from 'next/head';
 import { exchangeCodeForAccessToken } from '../lib/square';
+
+
+export default function CallbackPage({ merchantData }) {
+  const router = useRouter();
+
+  return (
+    <div>
+      <Head>
+        <title>Callback Page</title>
+        <meta name="description" content="Callback page for Square OAuth flow" />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
+      <main>
+        <h1>Callback Page</h1>
+
+        {!merchantData.merchant.business_name ? (
+          <p>Loading merchant data...</p>
+        ) : (
+          <p>Merchant Name: {merchantData.merchant.business_name}</p>
+        )}
+      </main>
+    </div>
+  );
+}
 
 export async function getServerSideProps(context) {
   const { code } = context.query;
-
   try {
-    const accessToken = await exchangeCodeForAccessToken(code);
+    const data = await exchangeCodeForAccessToken(code);
     return {
       props: {
-        merchantName: accessToken.merchant_name,
+        merchantData: data.merchantData,
       },
     };
   } catch (error) {
@@ -16,13 +42,4 @@ export async function getServerSideProps(context) {
       props: {},
     };
   }
-}
-
-export default function CallbackPage({ merchantName }) {
-  return (
-    <div>
-      <h1>Welcome, {merchantName}!</h1>
-      <p>Your access token has been successfully generated.</p>
-    </div>
-  );
 }

@@ -1,9 +1,12 @@
 import querystring from 'querystring';
 
+let merchantData;
+
+//make the url for the call to square
 export function obtainSquareOAuthUrl() {
   const SQUARE_APP_ID = process.env.SQUARE_APP_ID;
   const SQUARE_CALLBACK_URL = process.env.SQUARE_CALLBACK_URL;
-  const scopes = ['MERCHANT_PROFILE_READ', 'PAYMENTS_READ'];
+  const scopes = ['MERCHANT_PROFILE_READ', 'PAYMENTS_READ', ];
   const state = SQUARE_CALLBACK_URL;
 
   const authorizationUrl =
@@ -13,7 +16,7 @@ export function obtainSquareOAuthUrl() {
     `&scope=${scopes.join('+')}` +
     `&state=${state}`;
 
-  return authorizationUrl;
+  return authorizationUrl;  
 }
 
 export async function exchangeCodeForAccessToken(code) {
@@ -33,6 +36,8 @@ export async function exchangeCodeForAccessToken(code) {
       grant_type: 'authorization_code',
       redirect_uri: SQUARE_CALLBACK_URL,
     }),
+
+    
   });
 
   const data = await response.json();
@@ -44,8 +49,14 @@ export async function exchangeCodeForAccessToken(code) {
       'Content-Type': 'application/json',
     },
   });
-  const merchantData = await merchantResponse.json();
-  data.merchant_name = merchantData.name;
 
-  return data;
+  merchantData = await merchantResponse.json();
+
+  data.merchant_name = merchantData.business_name;
+
+  return { data, merchantData };
+}
+
+export function getMerchantData() {
+  return merchantData;
 }
